@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  # =========================
+  # 🗄️ Database (PostgreSQL)
+  # =========================
+  db:
+    image: postgres:15-alpine
+    container_name: infinity_db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password_here
+      POSTGRES_DB: infinity_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =========================
+  # 🧠 Backend (API server)
+  # =========================
+  backend:
+    build: ./backend
+    container_name: infinity_backend
+    restart: always
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:your_secure_password_here@db:5432/infinity_db
+      ALLOWED_ORIGINS: https://yourdomain.com
+      SMTP_SERVER: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: your_email@gmail.com
+      SMTP_PASSWORD: your_app_password
+      RECEIVER_EMAIL: your_email@gmail.com
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # =========================
+  # 🌐 Frontend (Next.js PROD)
+  # =========================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: infinity_frontend
+    restart: always
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NODE_ENV: production
+
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

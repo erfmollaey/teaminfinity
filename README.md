@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Immersive 3D Particle Portfolio
+
+An ultra-high-performance, creative portfolio website that blends cutting-edge Full-stack engineering with minimalist aesthetics. Powered by **Next.js**, **Three.js (React Three Fiber)**, and **Framer Motion**, this project orchestrates a massive system of **500,000 dynamic particles** that fluidly morph across 7 distinct geometric states based on precise frame-accurate scroll timelines.
+
+---
+
+## Core Architecture & Visual Milestones
+
+The entire experience is driven by a unified WebGL canvas acting as a backend-driven particle matrix, shifting shapes dynamically as the user scrolls through the presentation:
+
+* **00. Loading Phase (Starburst Spiral Galaxy):** A dual-arm logarithmic spiral with a hyper-dense glowing core, optimizing draw range dynamically ($45k \to 500k$ particles) to maximize rendering performance during server-side boots.
+* **01. Hero Section (The Infinity Loop):** The galaxy condenses into a mathematically pure infinity symbol ($\infty$), establishing the core brand identity: *"Infinity is in our DNA."*
+* **02. About Section (3D Interactive Cube):** Particles wrap into a solid 3D cube matching a bespoke, accumulated typography fade effect where words lock into full brightness step-by-step.
+* **03. Technologies (Dynamic Wavy Plane):** A complex, real-time wave simulation displacement utilizing trigonometric offsets running smoothly at 60FPS.
+* **04. Works Section (Double-Helix DNA Strand):** Particles re-map into an intricate, twisting DNA structure showcasing engineering complexity.
+* **05. Process Section (Whirlpool Vortex):** A fast-spinning particle vortex utilizing angular velocity matrices.
+* **06. Contact Section (Mount Damavand Geometric Cone):** A mathematical tribute utilizing power-based concave distribution formulas, natural ridge noise, and crater rim simulation to form the iconic silhouette of Mt. Damavand.
+
+---
+
+## Tech Stack
+
+* **Framework:** Next.js 15 (App Router, Client-side Optimization)
+* **3D Engine:** Three.js / React Three Fiber (@react-three/fiber)
+* **Animation & Orchestration:** Framer Motion (Scroll-linked micro-interactions & matrix timelines)
+* **Styling:** Tailwind CSS
+* **Language:** TypeScript (Strictly typed vectors and matrices)
+* **DevOps & Deployment:** Docker / Docker Compose
+
+---
+
+## Optimization & Performance Engineering
+
+Handling half a million particles on a single web thread requires meticulous performance guards:
+* **Dynamic Draw Ranges:** Prevents GPU bottlenecks by scaling particles instantly based on loading states.
+* **Array Memoization:** Heavily leverages `useMemo` to pre-allocate memory space (`Float32Array`) for all 7 structural forms, completely avoiding garbage collection overhead during transitions.
+* **Linear Interpolation (Lerp):** Smooths structural morphing and color shifts (`mat.color.lerpColors`) across custom ease-in-out cubic bezier curves.
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Ensure you have [Node.js](https://nodejs.org/) and [Docker](https://www.docker.com/) installed.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Install dependencies:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Bash
+ npm install
+ Run the development server:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Bash
+ npm run dev
 
-## Learn More
+#### Development
 
-To learn more about Next.js, take a look at the following resources:
+Production Deployment via Docker
+The project is fully dockerized to ensure absolute environment replication across staging and production servers.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To spin up the optimized production container, simply run:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Bash
+ docker-compose up --build -d
 
-## Deploy on Vercel
+This commands will compile the Next.js production build, optimize asset paths, and launch a background container ready to serve traffic.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+##### License
+Distributed under the MIT License. See LICENSE for more information.

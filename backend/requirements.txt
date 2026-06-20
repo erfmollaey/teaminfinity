@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic[email]
+python-dotenv
+sqlalchemy
+asyncpg
+slowapi
+alembic
+greenlet
