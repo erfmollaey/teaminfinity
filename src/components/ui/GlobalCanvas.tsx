@@ -1,13 +1,19 @@
 "use client";
 import { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
+import * as THREE from "times";
 
 function Scene({ loaded }: { loaded: boolean }) {
   const points = useRef<THREE.Points>(null!);
   const scrollOffset = useRef(0);
   const loadFactorRef = useRef(0);
-  const count = 500000;
+  
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  const count = isMobile ? 60000 : 500000;
 
   const colors = {
     hero: new THREE.Color("#ffffff"),
@@ -100,25 +106,20 @@ function Scene({ loaded }: { loaded: boolean }) {
       const rDamavand = peakRadius + (baseRadius - peakRadius) * Math.pow(1 - hProgress, 2.3);
 
       const thetaDamavand = Math.random() * Math.PI * 2;
-
       const ridgeNoise = 1.0 + 
         0.07 * Math.sin(thetaDamavand * 6) * Math.cos(thetaDamavand * 2) + 
         0.02 * Math.sin(thetaDamavand * 16);
-      
       const internalVolume = 0.88 + Math.random() * 0.12; 
 
       let finalRadius = rDamavand * ridgeNoise * internalVolume;
-
-      if (hProgress > 0.95) {
-        finalRadius += (hProgress - 0.95) * 1.8;
-      }
+      if (hProgress > 0.95) finalRadius += (hProgress - 0.95) * 1.8;
 
       dmArr[i3] = finalRadius * Math.cos(thetaDamavand);
       dmArr[i3+1] = yDamavand + (Math.random() - 0.5) * 0.15;
       dmArr[i3+2] = finalRadius * Math.sin(thetaDamavand);
     }
     return [gArr, iArr, cArr, tArr, dArr, pArr, dmArr];
-  }, []);
+  }, [count]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -137,7 +138,7 @@ function Scene({ loaded }: { loaded: boolean }) {
     loadFactorRef.current = THREE.MathUtils.lerp(loadFactorRef.current, loaded ? 1 : 0, 0.025);
     const lf = loadFactorRef.current;
 
-    const activeCount = Math.floor(THREE.MathUtils.lerp(45000, count, lf));
+    const activeCount = Math.floor(THREE.MathUtils.lerp(isMobile ? 15000 : 45000, count, lf));
     points.current.geometry.setDrawRange(0, activeCount);
 
     if (!loaded) {
@@ -178,54 +179,57 @@ function Scene({ loaded }: { loaded: boolean }) {
 
     const easeFactor = factor < 0.5 ? 2 * factor * factor : 1 - Math.pow(-2 * factor + 2, 2) / 2;
 
+    const isFromTech = fromArr === techPos;
+    const isToTech = toArr === techPos;
+    const isFromProcess = fromArr === processPos;
+    const isToProcess = toArr === processPos;
+    const vortexSpeed = time * 0.6;
+
+    const cosV = Math.cos(vortexSpeed);
+    const sinV = Math.sin(vortexSpeed);
+
     for (let j = 0; j < activeCount; j++) {
       const j3 = j * 3;
       
       const gx = galaxyPos[j3], gy = galaxyPos[j3+1], gz = galaxyPos[j3+2];
-
       let fx = fromArr[j3], fy = fromArr[j3+1], fz = fromArr[j3+2];
       let tx = toArr[j3], ty = toArr[j3+1], tz = toArr[j3+2];
 
-      if (fromArr === techPos || toArr === techPos) {
-        if (fromArr === techPos) fz = Math.sin(fx * 0.25 + fy * 0.25 + time * 1.5) * 3.0;
-        if (toArr === techPos) tz = Math.sin(tx * 0.25 + ty * 0.25 + time * 1.5) * 3.0;
+      if (isFromTech) fz = Math.sin(fx * 0.25 + fy * 0.25 + time * 1.5) * 3.0;
+      if (isToTech) tz = Math.sin(tx * 0.25 + ty * 0.25 + time * 1.5) * 3.0;
+
+      if (isFromProcess) {
+        const rx = fx, rz = fz;
+        fx = rx * cosV - rz * sinV;
+        fz = rx * sinV + rz * cosV;
+      }
+      if (isToProcess) {
+        const rx = tx, rz = tz;
+        tx = rx * cosV - rz * sinV;
+        tz = rx * sinV + rz * cosV;
       }
 
-      if (fromArr === processPos || toArr === processPos) {
-        const vortexSpeed = time * 0.6;
-        if (fromArr === processPos) {
-          const rx = fromArr[j3], rz = fromArr[j3+2];
-          fx = rx * Math.cos(vortexSpeed) - rz * Math.sin(vortexSpeed);
-          fz = rx * Math.sin(vortexSpeed) + rz * Math.cos(vortexSpeed);
-        }
-        if (toArr === processPos) {
-          const rx = toArr[j3], rz = toArr[j3+2];
-          tx = rx * Math.cos(vortexSpeed) - rz * Math.sin(vortexSpeed);
-          tz = rx * Math.sin(vortexSpeed) + rz * Math.cos(vortexSpeed);
-        }
-      }
+      const targetX = fx + (tx - fx) * easeFactor;
+      const targetY = fy + (ty - fy) * easeFactor;
+      const targetZ = fz + (tz - fz) * easeFactor;
 
-      const targetX = THREE.MathUtils.lerp(fx, tx, easeFactor);
-      const targetY = THREE.MathUtils.lerp(fy, ty, easeFactor);
-      const targetZ = THREE.MathUtils.lerp(fz, tz, easeFactor);
-
-      pos[j3] = THREE.MathUtils.lerp(gx, targetX, lf);
-      pos[j3+1] = THREE.MathUtils.lerp(gy, targetY, lf);
-      pos[j3+2] = THREE.MathUtils.lerp(gz, targetZ, lf);
+      pos[j3] = gx + (targetX - gx) * lf;
+      pos[j3+1] = gy + (targetY - gy) * lf;
+      pos[j3+2] = gz + (targetZ - gz) * lf;
     }
     points.current.geometry.attributes.position.needsUpdate = true;
 
     mat.color.lerpColors(fromColor, toColor, easeFactor);
 
-    
+    const sizeMultiplier = isMobile ? 1.5 : 1.0;
     if (s >= 0.82) {
-      mat.size = 0.018;
+      mat.size = 0.018 * sizeMultiplier;
     } else if (s >= 0.60 && s <= 0.72) {
-      mat.size = 0.024; 
+      mat.size = 0.024 * sizeMultiplier; 
     } else if (s >= 0.46 && s <= 0.52) {
-      mat.size = 0.026; 
+      mat.size = 0.026 * sizeMultiplier; 
     } else {
-      mat.size = 0.015; 
+      mat.size = 0.015 * sizeMultiplier; 
     }
 
     points.current.rotation.y += 0.0003;
@@ -241,6 +245,7 @@ function Scene({ loaded }: { loaded: boolean }) {
         opacity={0.85} 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
+        sizeAttenuation={true}
       />
     </points>
   );
