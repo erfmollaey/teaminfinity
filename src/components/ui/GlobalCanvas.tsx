@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useMemo, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "times";
+import * as THREE from "three";
 
 function Scene({ loaded }: { loaded: boolean }) {
   const points = useRef<THREE.Points>(null!);
