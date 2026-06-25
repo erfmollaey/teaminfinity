@@ -6,14 +6,19 @@ import * as THREE from "three";
 function Scene({ loaded }: { loaded: boolean }) {
   const points = useRef<THREE.Points>(null!);
   const scrollOffset = useRef(0);
+  const smoothSRef = useRef(0); // ✨ برای نرم کردن حرکت اسکرول در موبایل
   const loadFactorRef = useRef(0);
   
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-  }, []);
+  // 📱 تعیین وضعیت موبایل در همان اولین رندر کلاینت برای جلوگیری از باگ بافر WebGL
+  const [isMobile] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
 
-  const count = isMobile ? 60000 : 500000;
+  // تعداد بهینه ذرات: ۳۵هزار برای موبایل (جهت رندر ۶۰ فریم) و ۵۰۰هزار برای دسکتاپ
+  const count = isMobile ? 35000 : 500000;
 
   const colors = {
     hero: new THREE.Color("#ffffff"),
@@ -123,14 +128,21 @@ function Scene({ loaded }: { loaded: boolean }) {
 
   useEffect(() => {
     const onScroll = () => {
-      scrollOffset.current = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+      const denominator = document.documentElement.scrollHeight - window.innerHeight;
+      if (denominator <= 0) return;
+      const rawS = window.scrollY / denominator;
+      // 🔒 محدود کردن مقدار اسکرول بین ۰ و ۱ برای جلوگیری از ارور Bounce در آیفون/اندروید
+      scrollOffset.current = Math.max(0, Math.min(1, rawS));
     };
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useFrame((state) => {
-    const s = scrollOffset.current;
+    // ✨ لیرپ کردن اسکرول برای ایجاد ترنزیشن فوق‌العاده نرم روی مرورگرهای گوشی
+    smoothSRef.current = THREE.MathUtils.lerp(smoothSRef.current, scrollOffset.current, isMobile ? 0.06 : 0.04);
+    const s = smoothSRef.current;
+
     const pos = points.current.geometry.attributes.position.array as Float32Array;
     const mat = points.current.material as THREE.PointsMaterial;
     const time = state.clock.getElapsedTime();
@@ -138,7 +150,7 @@ function Scene({ loaded }: { loaded: boolean }) {
     loadFactorRef.current = THREE.MathUtils.lerp(loadFactorRef.current, loaded ? 1 : 0, 0.025);
     const lf = loadFactorRef.current;
 
-    const activeCount = Math.floor(THREE.MathUtils.lerp(isMobile ? 15000 : 45000, count, lf));
+    const activeCount = Math.floor(THREE.MathUtils.lerp(isMobile ? 12000 : 45000, count, lf));
     points.current.geometry.setDrawRange(0, activeCount);
 
     if (!loaded) {
@@ -221,7 +233,8 @@ function Scene({ loaded }: { loaded: boolean }) {
 
     mat.color.lerpColors(fromColor, toColor, easeFactor);
 
-    const sizeMultiplier = isMobile ? 1.5 : 1.0;
+    // تنظیم اندازه بهینه ذرات برای نمایش بهتر در تراکم پیکسلی موبایل (Retina/AMOLED)
+    const sizeMultiplier = isMobile ? 2.2 : 1.0; 
     if (s >= 0.82) {
       mat.size = 0.018 * sizeMultiplier;
     } else if (s >= 0.60 && s <= 0.72) {
@@ -232,7 +245,8 @@ function Scene({ loaded }: { loaded: boolean }) {
       mat.size = 0.015 * sizeMultiplier; 
     }
 
-    points.current.rotation.y += 0.0003;
+    // چرخش ملایم کل سیستم برای زنده نگه داشتن محیط در زمان سکون
+    points.current.rotation.y += isMobile ? 0.0015 : 0.0003;
   });
 
   return (
@@ -242,7 +256,7 @@ function Scene({ loaded }: { loaded: boolean }) {
       </bufferGeometry>
       <pointsMaterial 
         transparent 
-        opacity={0.85} 
+        opacity={isMobile ? 0.95 : 0.85} 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
         sizeAttenuation={true}
@@ -252,10 +266,12 @@ function Scene({ loaded }: { loaded: boolean }) {
 }
 
 export default function GlobalCanvas() {
+  const [mounted, setMounted] = useState(false); // ✨ گارد جلوگیری از رندر نابهنگام سه‌بعدی
   const [loaded, setLoaded] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
     const timer = setTimeout(() => {
       setLoaded(true);
       setTimeout(() => setShowOverlay(false), 1000);
@@ -281,11 +297,14 @@ export default function GlobalCanvas() {
         </div>
       )}
 
-      <div className="fixed inset-0 -z-10 bg-[#020202]">
-        <Canvas camera={{ position: [0, 0, 20], fov: 45 }}>
-          <Scene loaded={loaded} />
-        </Canvas>
-      </div>
+      {/* 🔒 لایه بوم فقط در صورت مونت شدن کامل در کلاینت رندر می‌شود تا بافر گلیچ نخورد */}
+      {mounted && (
+        <div className="fixed inset-0 -z-10 bg-[#020202] pointer-events-none">
+          <Canvas camera={{ position: [0, 0, 20], fov: 45 }}>
+            <Scene loaded={loaded} />
+          </Canvas>
+        </div>
+      )}
     </>
   );
 }
